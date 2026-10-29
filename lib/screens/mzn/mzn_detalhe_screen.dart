@@ -90,8 +90,13 @@ class _MznDetalheScreenState extends State<MznDetalheScreen> {
     final f = texto.text;
     texto.dispose();
     if (ok != true || !mounted) return;
-    await executar(
+    final feito = await executar(
         context, () => MznService.decidir(_id, resultado: resultado, fundamentacao: f));
+    // "Pedir mais informação" devolve a candidatura à InovaLab e ela deixa de
+    // ser visível para a MZN: sem isto o ecrã passava a mostrar um erro.
+    if (feito && resultado == 'mais_informacao' && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _registarPagamento(Linha pag) async {
@@ -366,7 +371,7 @@ class _MznDetalheScreenState extends State<MznDetalheScreen> {
   }
 
   List<Widget> _pagamentos(BuildContext context, String estado, List<Linha> pagamentos) {
-    final podePlano = ['formalizada', 'desembolsada', 'em_monitoria'].contains(estado);
+    final podePlano = CandidaturaService.planoPermitidoEm.contains(estado);
     if (!podePlano && pagamentos.isEmpty) return [];
     final hoje = DateTime.now();
     return [

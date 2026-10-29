@@ -281,10 +281,15 @@ class CandidaturaService {
     }
     final db = await _db;
     final doc = await db.query('documentos_candidatura',
-        columns: ['ficheiro_path'],
+        columns: ['ficheiro_path', 'entregue'],
         where: 'id = ? and candidatura_id = ?',
         whereArgs: [docId, candId]);
     if (doc.isEmpty) throw StateError('Documento não encontrado.');
+    // A beneficiária não troca um documento que a InovaLab já validou (o ecrã
+    // já esconde o botão, mas o serviço também tem de recusar).
+    if (pelaBeneficiaria && doc.first['entregue'] == 1) {
+      throw StateError('Este documento já foi validado pela InovaLab.');
+    }
 
     final seguro = pth
         .basenameWithoutExtension(nomeOriginal)
@@ -347,6 +352,11 @@ class CandidaturaService {
       {required int ano, required int mes, required double valor}) async {
     _exigirInovalab();
     if (mes < 1 || mes > 12 || valor < 0) throw StateError('Mês ou valor inválido.');
+    // "26-10" (ano com 2 dígitos) gravava o ano 26 e o mês ficava fora de sítio.
+    final agora = DateTime.now();
+    if (ano < 2000 || DateTime(ano, mes).isAfter(DateTime(agora.year, agora.month))) {
+      throw StateError('Ano ou mês fora do intervalo (usa AAAA-MM, até ao mês atual).');
+    }
     final db = await _db;
     final r = await resumo(candId);
     final periodo = DateTime(ano, mes, 1).toIso8601String();
@@ -376,6 +386,9 @@ class CandidaturaService {
         where: 'candidatura_id = ?', whereArgs: [candId], orderBy: 'data_prevista');
   }
 
+  /// Estados em que já se pode criar o plano de pagamentos.
+  static const planoPermitidoEm = ['desembolsada', 'em_monitoria'];
+
   /// Plano simples: prestações iguais (valor ÷ prazo), uma por mês, a começar
   /// no mês seguinte. Os juros reais são da MZN: ajustar quando houver o
   /// plano oficial.
@@ -383,8 +396,11 @@ class CandidaturaService {
     _exigirInovalabOuMzn();
     final db = await _db;
     final r = await resumo(candId);
-    if (!['formalizada', 'desembolsada', 'em_monitoria'].contains(r['estado'])) {
-      throw StateError('O plano só se cria depois de o crédito estar formalizado.');
+    // Só depois do desembolso. Antes aceitava-se "formalizada", e como o plano
+    // avança o estado para "em_monitoria", o passo "desembolsada" ficava
+    // saltado e a MZN já não conseguia marcar o desembolso.
+    if (!planoPermitidoEm.contains(r['estado'])) {
+      throw StateError('O plano só se cria depois de o crédito ser desembolsado.');
     }
     if ((await pagamentos(candId)).isNotEmpty) {
       throw StateError('Esta candidatura já tem plano de pagamentos.');
@@ -419,12 +435,18 @@ class CandidaturaService {
       throw StateError('Data inválida. Usa AAAA-MM-DD.');
     }
     final db = await _db;
-    await db.update(
+    final alteradas = await db.update(
       'pagamentos',
       {'valor_pago': valor, 'data_pagamento': DateTime.parse(data.trim()).toIso8601String()},
-      where: 'id = ? and candidatura_id = ?',
+      // "data_pagamento is null": não se sobrepõe um pagamento já registado.
+      where: 'id = ? and candidatura_id = ? and data_pagamento is null',
       whereArgs: [pagamentoId, candId],
     );
+    // Antes: se o pagamento não existisse (ou já estivesse pago) não acontecia
+    // nada, mas a app dizia que tinha corrido bem e registava a atividade.
+    if (alteradas == 0) {
+      throw StateError('Pagamento não encontrado ou já registado.');
+    }
     await _log('pagamento_registado', candId);
   }
 

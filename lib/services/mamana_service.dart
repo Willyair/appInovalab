@@ -79,7 +79,9 @@ class MamanaService {
     final p = _exigirMamana();
     final ben = await _minhaBeneficiaria();
     final agora = DateTime.now();
-    if (mes < 1 || mes > 12 || valor < 0) throw StateError('Mês ou valor inválido.');
+    if (mes < 1 || mes > 12 || valor < 0 || ano < 2000) {
+      throw StateError('Mês ou valor inválido.');
+    }
     if (DateTime(ano, mes).isAfter(DateTime(agora.year, agora.month))) {
       throw StateError('Não podes registar vendas de um mês que ainda não chegou.');
     }

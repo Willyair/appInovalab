@@ -39,8 +39,23 @@ class _NovaCandidaturaScreenState extends State<NovaCandidaturaScreen> {
     }
   }
 
+  String? _erroCarregar;
+
   Future<void> _preencher() async {
-    final r = await CandidaturaService.resumo(widget.candidaturaId!);
+    final Linha r;
+    try {
+      r = await CandidaturaService.resumo(widget.candidaturaId!);
+    } catch (e) {
+      // Antes: o ecrã ficava a rodar para sempre. E não mostramos o formulário
+      // vazio, para ninguém gravar campos em branco por cima dos dados reais.
+      if (mounted) {
+        setState(() {
+          _erroCarregar = '$e';
+          _aCarregar = false;
+        });
+      }
+      return;
+    }
     _nome.text = (r['nome'] as String?) ?? '';
     _doc.text = (r['documento_identificacao'] as String?) ?? '';
     _tel.text = (r['telefone'] as String?) ?? '';
@@ -49,7 +64,9 @@ class _NovaCandidaturaScreenState extends State<NovaCandidaturaScreen> {
     _local.text = (r['localizacao'] as String?) ?? '';
     _inicio.text = (r['inicio_atividade'] as String?) ?? '';
     _finalidade.text = (r['finalidade_financiamento'] as String?) ?? '';
-    _valor.text = '${((r['valor_pedido'] as num?) ?? 0).round()}';
+    // Sem arredondar: um pedido de 15000.50 não pode passar a 15001 só por ser editado.
+    final vp = ((r['valor_pedido'] as num?) ?? 0).toDouble();
+    _valor.text = vp == vp.roundToDouble() ? '${vp.round()}' : vp.toStringAsFixed(2);
     _prazo.text = '${(r['prazo_meses'] as int?) ?? 6}';
     _primeiro = r['primeiro_credito'] == 1;
     if (mounted) setState(() => _aCarregar = false);
@@ -132,6 +149,17 @@ class _NovaCandidaturaScreenState extends State<NovaCandidaturaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_erroCarregar != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Editar candidatura')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('Não consegui abrir a candidatura: $_erroCarregar'),
+          ),
+        ),
+      );
+    }
     if (_aCarregar) {
       return Scaffold(
         appBar: AppBar(title: const Text('Editar candidatura')),

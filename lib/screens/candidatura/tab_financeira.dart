@@ -64,15 +64,27 @@ class _TabFinanceiraState extends State<TabFinanceira> with AutomaticKeepAliveCl
   double get _p => lerNumero(_prestacao.text) ?? 0;
 
   Future<void> _guardar() async {
-    if (_vendas.text.trim().isEmpty || _custos.text.trim().isEmpty || _p <= 0) {
+    // Cada campo tem de ser um número. Antes, texto que não fosse número (ou
+    // "5000MZN") era lido como 0 e a análise era guardada sem aviso.
+    final v = lerNumero(_vendas.text);
+    final c = lerNumero(_custos.text);
+    final d = _dividas.text.trim().isEmpty ? 0.0 : lerNumero(_dividas.text);
+    final p = lerNumero(_prestacao.text);
+    if (v == null || c == null || d == null || p == null || p <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Preenche vendas, custos e a prestação estimada.')));
+          content: Text('Preenche vendas, custos e a prestação estimada só com números '
+              '(a prestação tem de ser maior que 0).')));
+      return;
+    }
+    if (v < 0 || c < 0 || d < 0) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Os valores não podem ser negativos.')));
       return;
     }
     final ok = await executar(
         context,
         () => CandidaturaService.guardarAnalise(widget.candidaturaId,
-            vendas: _v, custos: _c, outrasDividas: _d, prestacao: _p, observacoes: _obs.text));
+            vendas: v, custos: c, outrasDividas: d, prestacao: p, observacoes: _obs.text));
     if (ok && mounted) {
       widget.aoAlterar();
       ScaffoldMessenger.of(context)

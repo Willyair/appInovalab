@@ -126,10 +126,17 @@ class AuthService {
   static Future<Perfil> entrar(String login, String pin) async {
     const generico = 'Identificador ou PIN incorreto.';
     final db = await DatabaseHelper.instancia.db;
+    // O telefone escrito como "+258 84 000 0000" ou "84-000-0000" tem de dar o
+    // mesmo identificador que foi guardado (só dígitos); e "Inovalab" = "inovalab".
+    final bruto = login.trim();
+    final semSeparadores = bruto.replaceAll(RegExp(r'[\s\-\+\(\)\.]'), '');
+    final chave = RegExp(r'^\d+$').hasMatch(semSeparadores)
+        ? semSeparadores
+        : bruto.toLowerCase();
     final linhas = await db.query(
       'perfis',
       where: 'login = ? and ativo = 1',
-      whereArgs: [login.trim()],
+      whereArgs: [chave],
     );
     if (linhas.isEmpty) {
       // Gasta o mesmo tempo, para não distinguir "não existe" de "PIN errado".

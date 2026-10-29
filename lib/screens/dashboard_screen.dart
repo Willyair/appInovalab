@@ -110,6 +110,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: FutureBuilder<_DadosDashboard>(
         future: _futuro,
         builder: (context, snap) {
+          if (snap.hasError) {
+            // Antes: qualquer exceção deixava o spinner a rodar para sempre.
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Não consegui carregar o início.'),
+                    const SizedBox(height: 8),
+                    Text('${snap.error}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton(onPressed: _recarregar, child: const Text('Tentar de novo')),
+                  ],
+                ),
+              ),
+            );
+          }
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }

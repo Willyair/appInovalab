@@ -12,11 +12,18 @@ class DatabaseHelper {
   DatabaseHelper._();
   static final DatabaseHelper instancia = DatabaseHelper._();
 
-  Database? _db;
+  Future<Database>? _abertura;
 
+  /// Guarda a abertura em curso (e não só o resultado), para que dois pedidos
+  /// em simultâneo não abram a base duas vezes. Se a abertura falhar, esquece-a
+  /// para ser possível tentar de novo.
   Future<Database> get db async {
-    _db ??= await _abrir();
-    return _db!;
+    try {
+      return await (_abertura ??= _abrir());
+    } catch (_) {
+      _abertura = null;
+      rethrow;
+    }
   }
 
   Future<Database> _abrir() async {

@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../models/estatisticas.dart';
+import 'comum.dart';
 
 class GraficoPessoal extends StatelessWidget {
   final EstatisticasPessoais dados;
@@ -15,7 +16,7 @@ class GraficoPessoal extends StatelessWidget {
       children: [
         _CartaoIndicador(
           itens: [
-            _Indicador('Valor concedido', 'MT ${dados.valorConcedido.toStringAsFixed(0)}'),
+            _Indicador('Valor concedido', formatarMzn(dados.valorConcedido)),
             _Indicador('Estado', dados.estadoCredito),
           ],
         ),
@@ -86,7 +87,7 @@ class GraficoAgregado extends StatelessWidget {
         _CartaoIndicador(
           itens: [
             _Indicador('Mamanas apoiadas', '${dados.numeroMamanasApoiadas}'),
-            _Indicador('Valor concedido', 'MT ${dados.valorTotalConcedido.toStringAsFixed(0)}'),
+            _Indicador('Valor concedido', formatarMzn(dados.valorTotalConcedido)),
           ],
         ),
         const SizedBox(height: 16),
@@ -211,6 +212,7 @@ class _LinhaVendas extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              interval: 1, // sem isto o fl_chart pode pedir 0.5, 1.5… e repetir o mês
               getTitlesWidget: (v, meta) {
                 final i = v.toInt();
                 if (i < 0 || i >= pontos.length) return const SizedBox.shrink();

@@ -76,6 +76,14 @@ class MznService {
     }
     final db = await DatabaseHelper.instancia.db;
     await db.transaction((txn) async {
+      // Confirma o estado DENTRO da transação: com dois toques seguidos em
+      // "Aprovar", as duas chamadas passavam a verificação de cima e gravavam
+      // duas decisões — e as decisões não se podem apagar nem corrigir.
+      final atual = await txn.query('candidaturas',
+          columns: ['estado'], where: 'id = ?', whereArgs: [candId]);
+      if (atual.isEmpty || atual.first['estado'] != 'encaminhada') {
+        throw StateError('Esta candidatura já foi decidida.');
+      }
       await txn.insert('decisoes', {
         'id': novoId(),
         'candidatura_id': candId,

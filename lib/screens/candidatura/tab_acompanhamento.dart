@@ -199,8 +199,7 @@ class _TabAcompanhamentoState extends State<TabAcompanhamento> {
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final d = snap.data!;
         final hoje = DateTime.now();
-        final podePlano = ['formalizada', 'desembolsada', 'em_monitoria']
-            .contains(d.resumo['estado']);
+        final podePlano = CandidaturaService.planoPermitidoEm.contains(d.resumo['estado']);
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -212,7 +211,7 @@ class _TabAcompanhamentoState extends State<TabAcompanhamento> {
               Text(podePlano
                   ? 'Sem plano ainda. "Gerar plano" divide o valor pelo prazo, sem juros '
                       '(ajusta com o plano oficial da MZN).'
-                  : 'O plano de pagamentos cria-se depois de o crédito estar formalizado.'),
+                  : 'O plano de pagamentos cria-se depois de a MZN marcar o crédito como desembolsado.'),
             for (final p in d.pagamentos) _linhaPagamento(p, hoje),
             _cabecalho(context, 'Vendas conferidas', botao: 'Registar', aoClicar: _venda),
             if (d.vendas.isEmpty) const Text('Sem vendas registadas.'),

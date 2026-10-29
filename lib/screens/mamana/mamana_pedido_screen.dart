@@ -248,7 +248,12 @@ class _PedidoCardState extends State<_PedidoCard> {
                 titulo(context, 'Em que ponto estamos'),
                 for (final (rotulo, minimo) in _passos)
                   Builder(builder: (_) {
-                    final limite = recusada ? 3 : idx; // recusada: parou na decisão
+                    // Recusada: percorreu tudo até ser enviada à MZN e parou na
+                    // decisão. (Antes era 3, e "Análise concluída" e "Enviado à
+                    // MZN" apareciam por fazer num pedido que já tinha sido analisado.)
+                    final limite = recusada
+                        ? CandidaturaService.ordemEstados.indexOf('encaminhada')
+                        : idx;
                     final feito = limite >= CandidaturaService.ordemEstados.indexOf(minimo);
                     final falhou = recusada && minimo == 'decidida';
                     return ListTile(
@@ -272,7 +277,12 @@ class _PedidoCardState extends State<_PedidoCard> {
                     titulo(context, 'Os meus pagamentos'),
                     for (final p in d.pagamentos) _linhaPagamento(p),
                   ],
-                ] else if (snap.connectionState != ConnectionState.done)
+                ] else if (snap.hasError)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text('Não consegui carregar os documentos e pagamentos: ${snap.error}'),
+                  )
+                else if (snap.connectionState != ConnectionState.done)
                   const Padding(
                     padding: EdgeInsets.only(top: 16),
                     child: Center(child: CircularProgressIndicator()),

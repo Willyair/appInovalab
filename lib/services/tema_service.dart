@@ -28,7 +28,10 @@ class TemaService {
       final db = await DatabaseHelper.instancia.db;
       final r = await db.query('configuracoes', where: 'chave = ?', whereArgs: [_chave]);
       modo.value = _de(r.isEmpty ? null : r.first['valor'] as String);
-    } catch (_) {
+    } catch (e) {
+      // Não escondemos o erro: o ecrã de entrada volta a tentar abrir a base
+      // e mostra a mensagem. Aqui só se usa o tema do sistema.
+      debugPrint('TemaService.carregar: não consegui abrir a base de dados: $e');
       modo.value = ThemeMode.system;
     }
   }

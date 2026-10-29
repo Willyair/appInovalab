@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _aCarregar = true;
   bool _aEntrar = false;
   String? _erro;
+  String? _erroArranque;
 
   @override
   void initState() {
@@ -28,8 +29,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _carregar() async {
-    await AuthService.semearContasDemonstracao();
-    setState(() => _aCarregar = false);
+    if (mounted) {
+      setState(() {
+        _aCarregar = true;
+        _erroArranque = null;
+      });
+    }
+    try {
+      await AuthService.semearContasDemonstracao();
+      if (mounted) setState(() => _aCarregar = false);
+    } catch (e) {
+      // Antes: o erro perdia-se e o ecrã ficava a rodar para sempre.
+      if (mounted) {
+        setState(() {
+          _erroArranque = '$e';
+          _aCarregar = false;
+        });
+      }
+    }
   }
 
   Future<void> _entrar() async {
@@ -42,7 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await AuthService.entrar(_campoLogin.text, _campoPin.text);
       widget.aoEntrar();
     } on LoginException catch (e) {
-      setState(() => _erro = e.mensagem);
+      if (mounted) setState(() => _erro = e.mensagem);
+    } catch (e) {
+      // Erro inesperado (base de dados, etc.): antes não aparecia nada.
+      if (mounted) setState(() => _erro = 'Não foi possível entrar: $e');
     } finally {
       if (mounted) setState(() => _aEntrar = false);
     }
@@ -59,6 +79,28 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     if (_aCarregar) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_erroArranque != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Não consegui abrir a base de dados do aparelho.',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text(_erroArranque!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(onPressed: _carregar, child: const Text('Tentar de novo')),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     return Scaffold(
       appBar: AppBar(

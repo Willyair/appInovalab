@@ -16,8 +16,36 @@ String soData(Object? iso) {
   return s.length >= 10 ? s.substring(0, 10) : s;
 }
 
-double? lerNumero(String t) =>
-    double.tryParse(t.trim().replaceAll(' ', '').replaceAll(',', '.'));
+/// Lê um número escrito à mão. Aceita "15000", "15 000", "15.000",
+/// "15.000,50", "15,000.50" e "1500,5". Devolve null se não for um número.
+///
+/// Atenção: "15.000" lê-se como quinze mil (ponto como separador de milhares,
+/// como é costume em português); antes lia-se como 15 — um erro silencioso.
+double? lerNumero(String t) {
+  var s = t.trim().replaceAll(RegExp(r'[\s ]'), '');
+  if (s.isEmpty) return null;
+  final temPonto = s.contains('.');
+  final temVirgula = s.contains(',');
+  if (temPonto && temVirgula) {
+    // O último separador é o decimal; o outro é de milhares.
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replaceAll('.', '').replaceAll(',', '.');
+    } else {
+      s = s.replaceAll(',', '');
+    }
+  } else if (temVirgula) {
+    // "1,500,000" (grupos de 3) = milhares; "1500,5" = decimal.
+    s = RegExp(r'^\d{1,3}(,\d{3}){2,}$').hasMatch(s)
+        ? s.replaceAll(',', '')
+        : s.replaceAll(',', '.');
+  } else if (temPonto) {
+    // "15.000" ou "1.500.000" = milhares; "15000.5" = decimal.
+    if (RegExp(r'^\d{1,3}(\.\d{3})+$').hasMatch(s)) s = s.replaceAll('.', '');
+  }
+  final v = double.tryParse(s);
+  if (v == null || v.isNaN || v.isInfinite) return null; // "NaN" e "Infinity" passavam
+  return v;
+}
 
 String rotuloEstado(String e) => switch (e) {
       'recebida' => 'Recebida',
